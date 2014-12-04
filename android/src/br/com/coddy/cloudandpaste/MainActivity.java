@@ -1,15 +1,25 @@
 package br.com.coddy.cloudandpaste;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import android.content.ClipData.Item;
 import android.content.ClipboardManager;
 import android.content.ClipboardManager.OnPrimaryClipChangedListener;
 import android.content.Context;
 import android.os.Bundle;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.widget.Toast;
+import br.com.coddy.cloudandpaste.utils.HttpCallback;
+import br.com.coddy.cloudandpaste.utils.HttpUtils;
 
 public class MainActivity extends ActionBarActivity {
 
+	String lastClipboard = null;
+	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
@@ -21,7 +31,28 @@ public class MainActivity extends ActionBarActivity {
 		clipboard.addPrimaryClipChangedListener(new OnPrimaryClipChangedListener() {
 			@Override
 			public void onPrimaryClipChanged() {
-				clipboard.getPrimaryClip().getItemAt(0).coerceToText(getApplicationContext());
+				Item clip = clipboard.getPrimaryClip().getItemAt(0);
+				if (clip.getText() == null) {
+					return;
+				}
+				String contents = clip.getText().toString();
+				if (contents.equals(lastClipboard)) {
+					return;
+				}
+				lastClipboard = contents;
+				JSONObject json = new JSONObject();
+				try {
+					json.put("contents", contents);
+				} catch (JSONException e) {
+					Log.e(MainActivity.class.toString(), e.getMessage());
+				}
+				HttpUtils.doPostAsync("http://54.172.195.40:5000/clipboard", json, new HttpCallback() {
+					@Override
+					public void done(int statusCode) {
+						Toast.makeText(getApplicationContext(), 
+								"Clipboard updated", Toast.LENGTH_LONG).show();
+					}
+				});
 			}
 		});
 	}
